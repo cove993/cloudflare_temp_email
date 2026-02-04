@@ -31,7 +31,7 @@ app.use('/*', cors());
 // error handler
 app.onError((err, c) => {
 	console.error(err)
-	return c.text(`${err.name} ${err.message}`, 500)
+	return c.text(`\({err.name} \){err.message}`, 500)
 })
 // global middlewares
 app.use('/*', async (c, next) => {
@@ -70,10 +70,10 @@ app.use('/*', async (c, next) => {
 		const reqIp = c.req.raw.headers.get("cf-connecting-ip")
 		if (reqIp && c.env.RATE_LIMITER) {
 			const { success } = await c.env.RATE_LIMITER.limit(
-				{ key: `${c.req.path}|${reqIp}` }
+				{ key: `\({c.req.path}|\){reqIp}` }
 			)
 			if (!success) {
-				return c.text(`IP=${reqIp} Rate limit exceeded for ${c.req.path}`, 429)
+				return c.text(`IP=\({reqIp} Rate limit exceeded for \){c.req.path}`, 429)
 			}
 		}
 		// Check access control (blacklist and daily limit)
@@ -150,6 +150,17 @@ app.use('/api/*', async (c, next) => {
 		await next();
 		return;
 	}
+
+	// ✅ 允许管理员密码直接访问 /api/settings
+	if (c.req.path.startsWith("/api/settings")) {
+		const adminPasswords = getAdminPasswords(c);
+		const adminAuth = c.req.raw.headers.get("x-admin-auth");
+		if (adminAuth && adminPasswords && adminPasswords.includes(adminAuth)) {
+			await next();
+			return;
+		}
+	}
+
 	if (c.req.path.startsWith("/api/settings")
 		|| c.req.path.startsWith("/api/send_mail")
 	) {
@@ -281,7 +292,6 @@ const health_check = async (c: Context<HonoCustomType>) => {
 app.get('/', health_check)
 app.get('/health_check', health_check)
 app.all('/*', async c => c.text("Not Found", 404))
-
 
 export default {
 	fetch: app.fetch,
