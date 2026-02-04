@@ -1,36 +1,10 @@
-import { Context } from "hono";
-
-import i18n from "../i18n";
-import { UserOauth2Settings, UserSettings } from "../models";
-import { getJsonSetting, getUserRoles } from "../utils"
-import { CONSTANTS } from "../constants";
-import { commonGetUserRole } from "../common";
-import { Jwt } from "hono/utils/jwt";
-
-export default {
-    openSettings: async (c: Context<HonoCustomType>) => {
-        const value = await getJsonSetting(c, CONSTANTS.USER_SETTINGS_KEY);
-        const settings = new UserSettings(value);
-        const oauth2ClientIDs = [] as { clientID: string, name: string, icon?: string }[];
-        try {
-            const oauth2Settings = await getJsonSetting<UserOauth2Settings[]>(c, CONSTANTS.OAUTH2_SETTINGS_KEY);
-            oauth2ClientIDs.push(
-                ...oauth2Settings?.map(s => ({
-                    clientID: s.clientID,
-                    name: s.name,
-                    icon: s.icon,
-                })) || []
-            );
-        } catch (e) {
-            console.error("Failed to get oauth2 settings", e);
-        }
-        return c.json({
-            enable: settings.enable,
-            enableMailVerify: settings.enableMailVerify,
-            oauth2ClientIDs: oauth2ClientIDs,
-        })
-    },
     settings: async (c: Context<HonoCustomType>) => {
+        // ✅ 允许管理员密码直接访问 settings
+        const adminAuth = c.req.header("x-admin-auth");
+        if (adminAuth && adminAuth === c.env.ADMIN_PASSWORD) {
+            return await (module.exports as any).openSettings(c);
+        }
+
         const user = c.get("userPayload");
         const msgs = i18n.getMessagesbyContext(c);
         // check if user exists
@@ -83,4 +57,3 @@ export default {
             user_role: user_role
         });
     },
-}
