@@ -2,7 +2,7 @@ import type {
     AuthenticatorTransportFuture,
     CredentialDeviceType,
     Base64URLString,
-} from '@simplewebauthn/types';
+} from '@simplewebauthn/server';
 
 export type Passkey = {
     id: Base64URLString;
@@ -99,18 +99,33 @@ export class UserSettings {
     enableMailAllowList: boolean | undefined;
     mailAllowList: string[] | undefined;
     maxAddressCount: number;
+    enableEmailCheckRegex: boolean | undefined;
+    emailCheckRegex: string | undefined;
 
     constructor(data: UserSettings | undefined | null) {
         const {
             enable, enableMailVerify, verifyMailSender,
-            enableMailAllowList, mailAllowList, maxAddressCount
+            enableMailAllowList, mailAllowList, maxAddressCount,
+            enableEmailCheckRegex, emailCheckRegex
         } = data || {};
         this.enable = enable;
         this.enableMailVerify = enableMailVerify;
         this.verifyMailSender = verifyMailSender;
         this.enableMailAllowList = enableMailAllowList;
         this.mailAllowList = mailAllowList;
-        this.maxAddressCount = maxAddressCount || 5;
+        this.maxAddressCount = (typeof maxAddressCount === "number" && maxAddressCount >= 0) ? maxAddressCount : 5;
+        this.enableEmailCheckRegex = enableEmailCheckRegex;
+        this.emailCheckRegex = emailCheckRegex;
+    }
+}
+
+export class AddressCreationSettings {
+
+    enableSubdomainMatch: boolean | undefined;
+
+    constructor(data: AddressCreationSettings | undefined | null) {
+        const { enableSubdomainMatch } = data || {};
+        this.enableSubdomainMatch = enableSubdomainMatch;
     }
 }
 
@@ -169,9 +184,27 @@ export type EmailRuleSettings = {
     emailForwardingList: SubdomainForwardAddressList[]
 }
 
+export type SendMailLimitConfig = {
+    dailyEnabled: boolean;
+    monthlyEnabled: boolean;
+    dailyLimit: number | null;
+    monthlyLimit: number | null;
+}
+
 export type RoleConfig = {
     maxAddressCount?: number;
     // future configs can be added here
 }
 
 export type RoleAddressConfig = Record<string, RoleConfig>;
+
+export type RawMailRow = {
+    id: number;
+    message_id?: string;
+    source?: string;
+    address?: string;
+    raw?: string;
+    raw_blob?: unknown;
+    metadata?: string;
+    created_at?: string;
+}
